@@ -6,11 +6,12 @@ import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -65,6 +66,12 @@ public class WeatherActivity extends AppCompatActivity
     ScrollView weatherLayout;
     @Bind(R.id.back_tv)
     TextView backTv;
+    @Bind(R.id.refresh)
+    public SwipeRefreshLayout refresh;
+    @Bind(R.id.draw)
+    public DrawerLayout draw;
+    @Bind(R.id.ll)
+    LinearLayout ll;
     @Bind(R.id.bg)
     ImageView bg;
 
@@ -74,25 +81,24 @@ public class WeatherActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
-        if (Build.VERSION.SDK_INT>=21)
+        if (Build.VERSION.SDK_INT >= 21)
         {
             View decorView = getWindow().getDecorView();
-            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+            decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
             getWindow().setStatusBarColor(Color.TRANSPARENT);
         }
         setContentView(R.layout.activity_weather);
         ButterKnife.bind(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         String pic = preferences.getString("pic", null);
-        if (pic!=null)
+        if (pic != null)
         {
             Glide.with(this).load(pic).into(bg);
-        }
-        else
+        } else
         {
             getByPic();
         }
-        String id = getIntent().getStringExtra("weather_id");
+        final String id = getIntent().getStringExtra("weather_id");
         Log.e(TAG, "onCreate: id=" + id);
         preferences.edit().putString("weather_id", id).apply();
         String weather = preferences.getString(id, null);
@@ -107,11 +113,29 @@ public class WeatherActivity extends AppCompatActivity
             weatherLayout.setVisibility(View.INVISIBLE);
             RequestWeather(id);
         }
+
+        refresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener()
+        {
+            @Override
+            public void onRefresh()
+            {
+                RequestWeather(id);
+            }
+        });
     }
+
+//    private SimpleTarget<Bitmap> target = new SimpleTarget<Bitmap>()
+//    {
+//        @Override
+//        public void onResourceReady(Bitmap resource, GlideAnimation<? super Bitmap> glideAnimation)
+//        {
+//            ll.setBackground(new BitmapDrawable(resource));
+//        }
+//    };
 
     private void getByPic()
     {
-        String url=Const.MAIN+"/bing_pic";
+        String url = Const.MAIN + "/bing_pic";
         HttpUtil.sendOKHttpRequest(url, new Callback()
         {
             @Override
@@ -123,14 +147,14 @@ public class WeatherActivity extends AppCompatActivity
             @Override
             public void onResponse(Call call, Response response) throws IOException
             {
-               final  String string = response.body().string();
+                final String string = response.body().string();
                 runOnUiThread(new Runnable()
                 {
                     @Override
                     public void run()
                     {
 
-                        preferences.edit().putString("pic",string).apply();
+                        preferences.edit().putString("pic", string).apply();
 
                         Glide.with(WeatherActivity.this).load(string).into(bg);
                     }
@@ -143,7 +167,7 @@ public class WeatherActivity extends AppCompatActivity
     /**
      * 去服务器请求天气信息
      */
-    private void RequestWeather(final String weatherId)
+    public void RequestWeather(final String weatherId)
     {
         String url = Const.MAIN + Const.WEATHER + "?cityid=" + weatherId + "&key=" + Const.KEY;
         Log.e(TAG, "RequestWeather: " + url);
@@ -158,6 +182,7 @@ public class WeatherActivity extends AppCompatActivity
                     public void run()
                     {
                         Toast.makeText(WeatherActivity.this, "获取天气信息失败2", Toast.LENGTH_SHORT).show();
+                        refresh.setRefreshing(false);
                     }
                 });
             }
@@ -180,6 +205,7 @@ public class WeatherActivity extends AppCompatActivity
                         {
                             Toast.makeText(WeatherActivity.this, "获取天气信息失败1", Toast.LENGTH_SHORT).show();
                         }
+                        refresh.setRefreshing(false);
                     }
                 });
             }
