@@ -24,6 +24,7 @@ import com.example.weather.MainActivity;
 import com.example.weather.R;
 import com.example.weather.gson.ForeCast;
 import com.example.weather.gson.Weather;
+import com.example.weather.service.AutoUpdateService;
 import com.example.weather.util.HttpUtil;
 import com.example.weather.util.ParseUtil;
 
@@ -99,8 +100,8 @@ public class WeatherActivity extends AppCompatActivity
             getByPic();
         }
         final String id = getIntent().getStringExtra("weather_id");
-        Log.e(TAG, "onCreate: id=" + id);
         preferences.edit().putString("weather_id", id).apply();
+
         String weather = preferences.getString(id, null);
         if (weather != null)
         {
@@ -217,37 +218,43 @@ public class WeatherActivity extends AppCompatActivity
      */
     private void ShowWeather(Weather w)
     {
-        String cityName = w.getBasic().getCityName();
-        String updateTime = w.getBasic().getUpdate().getUpdateTime().split(" ")[1];
-        String degree = w.getNow().getTemperature() + "℃";
-        String info = w.getNow().getMore().getInfo();
-        titleCity.setText(cityName);
-        titleUpdateTime.setText(updateTime);
-        degreeText.setText(degree);
-        weatherInfoText.setText(info);
-        forecastLayout.removeAllViews();
-        for (ForeCast forcast : w.getForeCasts())
+        if (w!=null && "ok".equals(w.getStatus()))
         {
-            View view = LayoutInflater.from(this).inflate(R.layout.forecast_item, forecastLayout, false);
-            TextView dateText = (TextView) view.findViewById(R.id.date_text);
-            TextView infoText = (TextView) view.findViewById(R.id.info_text);
-            TextView maxText = (TextView) view.findViewById(R.id.max_text);
-            TextView minText = (TextView) view.findViewById(R.id.min_text);
-            dateText.setText(forcast.getDate() + "");
-            infoText.setText(forcast.getMore().getInfo() + "");
-            maxText.setText(forcast.getTemperature().getMax());
-            minText.setText(forcast.getTemperature().getMin());
-            forecastLayout.addView(view);
+
+            String cityName = w.getBasic().getCityName();
+            String updateTime = w.getBasic().getUpdate().getUpdateTime().split(" ")[1];
+            String degree = w.getNow().getTemperature() + "℃";
+            String info = w.getNow().getMore().getInfo();
+            titleCity.setText(cityName);
+            titleUpdateTime.setText(updateTime);
+            degreeText.setText(degree);
+            weatherInfoText.setText(info);
+            forecastLayout.removeAllViews();
+            for (ForeCast forcast : w.getForeCasts())
+            {
+                View view = LayoutInflater.from(this).inflate(R.layout.forecast_item, forecastLayout, false);
+                TextView dateText = (TextView) view.findViewById(R.id.date_text);
+                TextView infoText = (TextView) view.findViewById(R.id.info_text);
+                TextView maxText = (TextView) view.findViewById(R.id.max_text);
+                TextView minText = (TextView) view.findViewById(R.id.min_text);
+                dateText.setText(forcast.getDate() + "");
+                infoText.setText(forcast.getMore().getInfo() + "");
+                maxText.setText(forcast.getTemperature().getMax());
+                minText.setText(forcast.getTemperature().getMin());
+                forecastLayout.addView(view);
+            }
+            if (w.getAqi() != null)
+            {
+                aqiText.setText(w.getAqi().getCity().getAqi());
+                pm25Text.setText(w.getAqi().getCity().getPm25());
+            }
+            comfortText.setText("舒适度：" + w.getSuggestion().getComfort().getInfo());
+            carWashText.setText("洗车指数：" + w.getSuggestion().getCarWash().getInfo());
+            sportText.setText("运动建议：" + w.getSuggestion().getSport().getInfo());
+            weatherLayout.setVisibility(View.VISIBLE);
+
+            startService(new Intent(WeatherActivity.this, AutoUpdateService.class));
         }
-        if (w.getAqi() != null)
-        {
-            aqiText.setText(w.getAqi().getCity().getAqi());
-            pm25Text.setText(w.getAqi().getCity().getPm25());
-        }
-        comfortText.setText("舒适度：" + w.getSuggestion().getComfort().getInfo());
-        carWashText.setText("洗车指数：" + w.getSuggestion().getCarWash().getInfo());
-        sportText.setText("运动建议：" + w.getSuggestion().getSport().getInfo());
-        weatherLayout.setVisibility(View.VISIBLE);
     }
 
     @OnClick(R.id.back_tv)
